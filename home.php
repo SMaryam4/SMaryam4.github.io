@@ -17,9 +17,6 @@ $starPlayers = $conn->query("SELECT * FROM players WHERE star_player = 1 LIMIT 4
 
 // Latest News
 $latestNews = $conn->query("SELECT * FROM news ORDER BY created_at DESC LIMIT 3");
-if (!$latestNews) {
-    die("News Query Failed: " . $conn->error);
-}
 ?>
 <!DOCTYPE html>
 <html>
@@ -37,10 +34,10 @@ if (!$latestNews) {
       <a href="home.php" class="hover:underline">Home</a>
       <a href="schedule.php" class="hover:underline">Schedule</a>
       <a href="players.php" class="hover:underline">Players</a>
-      <a href="psl.php" class="hover:underline ">PSL</a>
+      <a href="psl.php" class="hover:underline">PSL</a>
       <a href="news.php" class="hover:underline">News</a>
       <a href="admin/blog.php" class="hover:underline">Blog</a>
-
+      <a href="#" onclick="toggleChat()" class="hover:underline text-yellow-300 font-semibold">💬 Live Chat</a>
       <?php if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true): ?>
         <a href="admin/admin-dashboard.php" class="hover:underline text-yellow-300 font-semibold">Dashboard</a>
       <?php endif; ?>
@@ -130,35 +127,74 @@ if (!$latestNews) {
   </div>
 </section>
 
-<!-- Admin Dashboard Section -->
-<?php if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true): ?>
-<section class="p-6">
-  <h2 class="text-2xl font-bold text-green-700 mb-4">👨‍💼 Admin Dashboard</h2>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-    <a href="admin/add-post.php" class="bg-blue-600 text-white p-4 rounded shadow hover:bg-blue-700 text-center">
-      Manage Posts
-    </a>
-
-    <a href="admin/match-list.php" class="bg-green-600 text-white p-4 rounded shadow hover:bg-green-700 text-center">
-      Manage Matches
-    </a>
-
-    <a href="admin/users.php" class="bg-purple-600 text-white p-4 rounded shadow hover:bg-purple-700 text-center">
-      Manage Users
-    </a>
-
-    <a href="admin/manage-news.php" class="bg-yellow-600 text-white p-4 rounded shadow hover:bg-yellow-700 text-center">
-      Manage News
-    </a>
-
+<!-- Live Chat Modal -->
+<div id="chat-container" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center z-50">
+  <div class="bg-white text-black rounded shadow-lg p-4 max-w-xl w-full relative">
+  <div class="bg-white text-black rounded shadow-lg p-4 max-w-xl w-full relative">
+    <button onclick="toggleChat()" class="absolute top-2 right-2 text-red-600 font-bold text-xl">&times;</button>
+    <h2 class="text-xl font-bold text-green-700 mb-2">Live Chat</h2>
+    <div id="chat-box" class="h-64 overflow-y-auto border border-gray-300 p-2 bg-gray-50 rounded mb-2"></div>
+    <div class="flex gap-2">
+      <input id="username" type="text" value="<?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : '' ?>" placeholder="Your name" class="border rounded px-2 py-1 w-1/4" />
+      <input id="message" type="text" placeholder="Type your message" class="border rounded px-2 py-1 flex-grow" />
+      <button onclick="sendMessage()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Send</button>
+    </div>
   </div>
+</div>
 
-  <div class="mt-4">
-    <a href="admin/logout.php" class="inline-block text-red-600 hover:underline">Logout</a>
-  </div>
-</section>
-<?php endif; ?>
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDLisYU4oAzbSdD5-ZMG1hhZYAit6Tfc6w",
+    authDomain: "cricket-23d46.firebaseapp.com",
+    databaseURL: "https://cricket-23d46-default-rtdb.firebaseio.com",
+    projectId: "cricket-23d46",
+    storageBucket: "cricket-23d46.appspot.com",
+    messagingSenderId: "532462884236",
+    appId: "1:532462884236:web:07d7bf83780cf5254e32a9",
+    measurementId: "G-27PR888Q3Q"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Toggle Chat
+  function toggleChat() {
+    const chat = document.getElementById('chat-container');
+    chat.classList.toggle('hidden');
+  }
+
+  // Send Message
+  function sendMessage() {
+    const username = document.getElementById('username').value.trim();
+    const message = document.getElementById('message').value.trim();
+
+    if (username && message) {
+      db.ref("messages").push({
+        username: username,
+        message: message,
+        timestamp: Date.now()
+      });
+      document.getElementById('message').value = "";
+    }
+  }
+
+  // Listen to messages
+  db.ref("messages").on("child_added", function(snapshot) {
+    const data = snapshot.val();
+    const chatBox = document.getElementById('chat-box');
+    const msg = document.createElement('div');
+    msg.className = "mb-1";
+    msg.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+</script>
 
 </body>
 </html>
